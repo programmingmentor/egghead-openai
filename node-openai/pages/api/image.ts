@@ -7,18 +7,20 @@ const configuration = new Configuration({
 const openai = new OpenAIApi(configuration);
 
 type Data = {
-    data: any
+    image: any
 }
 
 export default async function handler(
     req: NextApiRequest,
     res: NextApiResponse<Data>
 ) {
+    const { prompt } = JSON.parse(req.body);
+
     const response = await openai.createImage({
-        prompt: 'a jedi with a lightsaber',
+        prompt: prompt,
         n: 1,
         size: "512x512"
     });
-    res.status(200).json({ data: response.data.data})
+    res.status(200).json({ image: response.data.data[0].url})
 }
 

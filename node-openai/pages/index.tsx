@@ -1,3 +1,5 @@
+import Head from 'next/head';
+
 import Layout from '@/components/Layout';
 import Section from '@/components/Section';
 import Container from '@/components/Container';
@@ -7,6 +9,7 @@ import FormInput from '@/components/FormInput';
 import Button from '@/components/Button';
 
 import styles from '@/styles/Home.module.scss'
+import { useState } from 'react';
 
 export default function Home() {
   const [image, setImage] = useState();
