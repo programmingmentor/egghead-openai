@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import Head from 'next/head'
+import { createParser } from 'eventsource-parser';
 
 import Layout from '@/components/Layout';
 import Section from '@/components/Section';
@@ -18,7 +19,6 @@ function getFieldFromFormByName({ name, form } = {}) {
 
 export default function Home() {
   const [text, setText] = useState();
-  const [attributes, setAttributes] = useState();
   const [image, setImage] = useState();
   const [isLoading, setIsLoading] = useState(false);
 
@@ -31,16 +31,47 @@ export default function Home() {
     });
 
     setIsLoading(true);
-    setAttributes(undefined);
+    setText(undefined);
 
-    const { data } = await fetch('/api/attributes', {
+    const response = await fetch('/api/chat-stream', {
       method: 'POST',
       body: JSON.stringify({
         prompt
-      })
-    }).then(r => r.json());
+      }),
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
 
-    setAttributes(data.attributes);
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+
+    function onParse(event) {
+      if (event.type === 'event') {
+        try {
+          const data = JSON.parse(event.data);
+          data.choices
+            .filter(({ delta }) => !!delta.content)
+            .forEach(({ delta }) => {
+              setText(prev => {
+                return `${prev || ''}${delta.content}`;
+              })
+            });
+        } catch(e) {
+          console.log(e)
+        }
+      }
+    }
+
+    const parser = createParser(onParse)
+
+    while (true) {
+      const { value, done } = await reader.read();
+      const dataString = decoder.decode(value);
+      if ( done || dataString.includes('[DONE]') ) break;
+      parser.feed(dataString);
+    }
+
     setIsLoading(false);
   }
 
@@ -85,9 +116,7 @@ export default function Home() {
               <Button disabled={isLoading}>Generate</Button>
             </FormRow>
           </Form>
-          {attributes && attributes.map(attribute => {
-            return <p key={attribute}>{ attribute }</p>
-          })}
+          {text && <p>{ text }</p>}
         </Container>
       </Section>
       <Section>
